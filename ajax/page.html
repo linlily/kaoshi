@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html>
+<head lang="en">
+    <meta charset="UTF-8">
+    <title></title>
+    <style type="text/css">
+        body{margin: 0;padding: 0;font-family: "微软雅黑";font-size: 14px;}
+        div,h2,ul,li,input{margin: 0;padding: 0;list-style: none;}
+
+        #tab{margin: 10px auto; width: 500px; border: 1px solid #d8d8d8; padding: 20px;}
+        #tab h2{height: 35px;line-height: 35px;background-color: pink;font-size: 14px;}
+        #tab h2 span{display: block;float: left;width: 33.33%;text-align: center;color: red;}
+        #list li{height: 35px;line-height: 35px;cursor: pointer;}
+        #list li.bg{background-color: cadetblue;}
+        #list li:hover{background-color: #c6c6c6;}
+        #list li span{width: 33.33%;display: inline-block;text-align: center;}
+        #list .even{background: #08BECE;}
+        #pageDiv{overflow: hidden;margin: 10px auto;}
+        #pageDiv div,#pageDiv input,#pageDiv li{ cursor: pointer;float: left;width: 50px;text-align: center;height: 20px;line-height: 20px;margin-left: 5px;border: 1px solid #d8d8d8;}
+        #pageDiv li{width: 20px;}
+        #pageDiv .select{background: #ccc;}
+
+
+    </style>
+</head>
+<body>
+<div id="tab">
+    <h2><span>学号</span><span>性别</span><span>分数</span></h2>
+    <ul id="list"></ul>
+    <div id="pageDiv">
+        <div id="first">首页</div>
+        <div id="previous">上一页</div>
+        <ul id="pageList"></ul>
+        <div id="next">下一页</div>
+        <div id="last">尾页</div>
+        <input type="text" id="goTo"/>
+    </div>
+</div>
+</body>
+</html>
+<script type="text/javascript">
+    var createXHR=(function(){
+        var flag = window.XMLHttpRequest;
+        if (flag) {
+            return function () {
+                return new XMLHttpRequest();
+            }
+        }
+        return function () {
+            return new ActiveXObject('Microsoft.XMLHTTP');
+        }
+    })();
+
+    var utils={
+        toJSON:function(str){
+            return "JSON" in window?JSON.parse(str):eval("("+str+")");
+        },
+        ajax:function(url,callback){
+            var _this=this;
+            var xhr=createXHR();
+            url+=url.indexOf("?")>-1?"&_="+Math.random():"?_="+Math.random();
+            xhr.open("get",url);
+            xhr.onreadystatechange=function(){
+                if(this.readyState===4 && /^2\d{2}$/.test(this.status)){
+                    var val=this.responseText;
+                    val=_this.toJSON(val);
+                    typeof callback==="function"?callback(val):null;
+                }
+            };
+            xhr.send();
+        }
+
+    };
+
+    var list=document.getElementById('list');
+    var pageDiv=document.getElementById('pageDiv');
+    var pageList=document.getElementById("pageList");
+    var total= 0,totalPage= 0,pageNum=10,curPage=1;
+    utils.ajax("data.txt",function(data){
+        total=data.length;
+        totalPage=Math.ceil(total/pageNum);
+//        console.log(total,totalPage);
+        bindData(curPage,data);
+        bindPage();
+        pageDiv.onclick=function(e){
+            e=e || window.event;
+            var target= e.target || e.srcElement;
+            if(target.tagName.toLowerCase()==="li"){
+                var page=Number(target.innerHTML);
+                curPage=page;
+            }else if(target.id==="first"){
+                curPage=1;
+            }else if(target.id==="last"){
+                curPage=totalPage;
+            }else if(target.id==="previous"){
+                if(curPage===1) return;
+                curPage--;
+            }else if(target.id==="next"){
+                if(curPage==totalPage) return;
+                curPage++;
+            }else if(target.id=="goTo"){
+                return;
+            }
+            bindData(curPage,data);
+            changeBg();
+        }
+
+        var goTo=document.getElementById("goTo");
+        goTo.onkeyup=function(e){
+            e=e || window.event;
+            if(e.keyCode===13){
+                var val=this.value.replace(/(^ +| +$)/g,"");
+                if(/^(\d|([1-9]\d+))$/.test(val)){
+                    if(val<1 || val>totalPage){
+                        this.value=totalPage;
+                        val=totalPage;
+                    }
+                    curPage=val;
+                    bindData(curPage,data);
+                    changeBg();
+                }else{
+                    this.value="";
+                    this.focus();
+                }
+            }
+        }
+
+
+
+    });
+
+    function bindPage(){
+        var str="";
+        for(var i=1;i<=totalPage;i++){
+            var c=i===curPage?"select":null;
+            str+="<li class='"+c+"'>"+i+"</li>";
+        }
+        pageList.innerHTML=str;
+    }
+
+    function bindData(page,data){
+        var firstIndex=(page-1)*pageNum,lastIndex=page*pageNum-1;
+        var str="";
+        for(var i=firstIndex;i<=lastIndex;i++){
+            var cur=data[i];
+            if(cur){
+                var c=i%2===1?"even":null;
+                str+="<li class='"+c+"'>";
+                for(var key in cur){
+                    var val=key==="sex"?(cur[key]===1?"男":"女"):cur[key];
+                    str+="<span>"+val+"</span>";
+                }
+                str+="</li>";
+            }
+        }
+        list.innerHTML=str;
+    }
+
+    function changeBg(){
+        var oLis=pageList.getElementsByTagName('li');
+        for(var i=0;i<oLis.length;i++){
+            oLis[i].className=i===curPage-1?"select":null;
+        }
+    }
+
+</script>
